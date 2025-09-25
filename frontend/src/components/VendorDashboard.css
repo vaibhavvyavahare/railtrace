@@ -1,0 +1,432 @@
+/* --- General & Variables --- */
+:root {
+    --primary-color: #ff6b35;
+    --secondary-color: #003366;
+    --text-color: #333333;
+    --bg-light: #f4f7f9;
+    --card-bg: white;
+    --border-color: #e5e7eb;
+}
+
+body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    background: var(--bg-light);
+    color: var(--text-color);
+    overflow-x: hidden;
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box;
+}
+
+/* Main Content Layout */
+.dashboard-container {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    /* Guarantees 100% width and dark background */
+    background: var(--secondary-color) !important; 
+    padding: 1.5rem 0 !important; /* No horizontal padding for 100% width */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--primary-color);
+    
+    display: flex;
+    justify-content: space-between; /* Pushes welcome left and buttons right */
+    align-items: center;
+    flex-wrap: nowrap; 
+    width: 100%; 
+    min-height: 70px; 
+}
+
+.welcome-section {
+    /* Left padding for the text */
+    padding-left: 2rem !important;
+    flex-shrink: 0; 
+}
+
+.welcome-section h1 {
+    color: white !important;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.welcome-section p {
+    color: white !important; 
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0; 
+    /* THIS IS THE FINAL FIX: Padding on the right to keep buttons off the edge */
+    padding-left: 0 !important; /* Eliminates conflicting left padding */
+    padding-right: 2rem !important; /* Ensures the buttons are 2rem from the absolute right edge */
+    flex-shrink: 0; 
+}
+
+@media (min-width: 768px) {
+    .header-actions {
+        margin-top: 0;
+        padding-right: 2rem; 
+    }
+}
+
+.header-btn {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-right: 0 !important; /* Remove any residual margin on buttons */
+}
+
+.btn-profile {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-profile:hover {
+    background: #e5e7eb;
+}
+
+.btn-logout {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-logout:hover {
+    background: #e55a2b;
+    transform: translateY(-1px);
+}
+
+/* Dashboard Content */
+.dashboard-content {
+    padding: 2rem;
+}
+
+/* Status Tabs */
+.status-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    background: white;
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.status-tab {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.status-tab.active {
+    background: var(--secondary-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3);
+}
+
+.status-tab:hover:not(.active) {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.tab-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.status-tab.active .tab-count {
+    background: var(--primary-color);
+}
+
+/* Order Grid */
+.orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.order-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.order-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: var(--primary-color);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.order-id {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+.order-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-in-process {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.order-details {
+    margin-bottom: 1.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.detail-label {
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: #374151;
+    font-weight: 600;
+}
+
+.order-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #e55a2b;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+/* QR Code Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    transition: all 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(1);
+    transition: transform 0.3s ease;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.qr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.qr-item {
+    text-align: center;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.qr-code {
+    width: 150px;
+    height: 150px;
+    background: #f9fafb;
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 3rem;
+}
+
+.qr-label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.download-btn {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.download-btn:hover {
+    background: #004080;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 0;
+    }
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem 0; 
+    }
+
+    .welcome-section {
+        width: 100%;
+        padding: 0 2rem; 
+        margin-bottom: 1rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        /* Force buttons to the far right on mobile */
+        justify-content: flex-end; 
+        margin-top: 0;
+        padding: 0 2rem; 
+    }
+    
+    /* Reset button padding on mobile for even spacing */
+    .btn-profile, .btn-logout {
+        padding-right: 1rem; 
+        padding-left: 1rem;
+    }
+
+    .orders-grid {
+        grid-template-columns: 1fr;
+    }
+    .status-tabs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .status-tab {
+        justify-content: flex-start;
+    }
+}

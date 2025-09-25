@@ -1,7 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3001/api';
+
+const useSortableData = (items, config = null) => {
+  const [sortConfig, setSortConfig] = useState(config);
+
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...items];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [items, sortConfig]);
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === 'ascending'
+    ) {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  return { items: sortedItems, requestSort, sortConfig };
+};
 
 const VendorManagement = () => {
   const [vendors, setVendors] = useState([]);
@@ -23,6 +57,15 @@ const VendorManagement = () => {
     fetchVendors();
   }, []);
 
+  const { items: sortedVendors, requestSort, sortConfig } = useSortableData(vendors);
+
+  const getSortDirection = (name) => {
+    if (!sortConfig) {
+      return;
+    }
+    return sortConfig.key === name ? (sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽') : '';
+  };
+
   if (loading) return <div>Loading vendors...</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;
 
@@ -36,14 +79,22 @@ const VendorManagement = () => {
           <table className="table table-hover">
               <thead>
                   <tr>
-                      <th>Vendor ID</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Phone</th>
+                      <th onClick={() => requestSort('vendor_id')} style={{ cursor: 'pointer' }}>
+                        Vendor ID{getSortDirection('vendor_id')}
+                      </th>
+                      <th onClick={() => requestSort('vendor_name')} style={{ cursor: 'pointer' }}>
+                        Name{getSortDirection('vendor_name')}
+                      </th>
+                      <th onClick={() => requestSort('email')} style={{ cursor: 'pointer' }}>
+                        Email{getSortDirection('email')}
+                      </th>
+                      <th onClick={() => requestSort('phone')} style={{ cursor: 'pointer' }}>
+                        Phone{getSortDirection('phone')}
+                      </th>
                   </tr>
               </thead>
               <tbody>
-                  {vendors.length > 0 ? vendors.map(vendor => (
+                  {sortedVendors.length > 0 ? sortedVendors.map(vendor => (
                     <tr key={vendor.vendor_id}>
                         <td>{vendor.vendor_id}</td>
                         <td>{vendor.vendor_name}</td>

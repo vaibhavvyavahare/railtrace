@@ -1,7 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3001/api';
+
+const useSortableData = (items, config = []) => {
+  const [sortConfig, setSortConfig] = useState(config);
+
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...items];
+    if (sortConfig.length > 0) {
+      sortableItems.sort((a, b) => {
+        for (const { key, direction } of sortConfig) {
+          if (a[key] < b[key]) {
+            return direction === 'ascending' ? -1 : 1;
+          }
+          if (a[key] > b[key]) {
+            return direction === 'ascending' ? 1 : -1;
+          }
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [items, sortConfig]);
+
+  const requestSort = (key, multi = false, fromDropdown = false) => {
+    let newConfig = [...sortConfig];
+    const keyIndex = newConfig.findIndex(c => c.key === key);
+
+    if (fromDropdown) {
+      // If sorting from dropdown, always make it a single sort
+      if (keyIndex !== -1) {
+        newConfig[keyIndex].direction = newConfig[keyIndex].direction === 'ascending' ? 'descending' : 'ascending';
+        newConfig = [newConfig[keyIndex]];
+      } else {
+        newConfig = [{ key, direction: 'ascending' }];
+      }
+    } else if (multi) {
+      if (keyIndex !== -1) {
+        // Toggle direction if key exists
+        newConfig[keyIndex].direction = newConfig[keyIndex].direction === 'ascending' ? 'descending' : 'ascending';
+      } else {
+        // Add new key to sort config
+        newConfig.push({ key, direction: 'ascending' });
+      }
+    } else {
+      if (keyIndex !== -1) {
+        // Just toggle direction
+        newConfig[keyIndex].direction = newConfig[keyIndex].direction === 'ascending' ? 'descending' : 'ascending';
+        // If not multi-sort, it becomes the primary sort key
+        newConfig = [newConfig[keyIndex]];
+      } else {
+        // Set as the only sort key
+        newConfig = [{ key, direction: 'ascending' }];
+      }
+    }
+    setSortConfig(newConfig);
+  };
+
+  return { items: sortedItems, requestSort, sortConfig };
+};
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
@@ -22,6 +80,15 @@ const OrderManagement = () => {
 
     fetchOrders();
   }, []);
+
+  const { items: sortedOrders, requestSort, sortConfig } = useSortableData(orders);
+
+  const getSortDirection = (name) => {
+    const config = sortConfig.find(c => c.key === name);
+    if (!config) return '';
+    const priority = sortConfig.findIndex(c => c.key === name) + 1;
+    return config.direction === 'ascending' ? ` 🔼${priority}` : ` 🔽${priority}`;
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -46,20 +113,53 @@ const OrderManagement = () => {
         <h5 className="card-title mb-0">Order Management</h5>
       </div>
       <div className="card-body">
+        <div className="d-flex justify-content-end align-items-center mb-3">
+          <div className="input-group w-auto">
+            <label className="input-group-text" htmlFor="sort-select">Sort by:</label>
+            <select 
+              id="sort-select"
+              className="form-select" 
+              onChange={(e) => requestSort(e.target.value, false, true)}
+              value={sortConfig.length > 0 ? sortConfig[0].key : ''}
+            >
+              <option value="order_id">Order ID</option>
+              <option value="vendor_name">Vendor</option>
+              <option value="component_type">Component Type</option>
+              <option value="quantity">Quantity</option>
+              <option value="status">Status</option>
+            </select>
+            <button 
+              className="btn btn-outline-secondary" 
+              onClick={() => requestSort(sortConfig.length > 0 ? sortConfig[0].key : 'order_id', false, true)}
+            >
+              {sortConfig.length > 0 && sortConfig[0].direction === 'ascending' ? '🔼' : '🔽'}
+            </button>
+          </div>
+        </div>
         <div className="table-responsive">
           <table className="table table-hover">
               <thead>
                   <tr>
-                      <th>Order ID</th>
-                      <th>Vendor</th>
-                      <th>Component Type</th>
-                      <th>Quantity</th>
-                      <th>Status</th>
+                      <th onClick={(e) => requestSort('order_id', e.shiftKey)} style={{ cursor: 'pointer' }}>
+                        Order ID{getSortDirection('order_id')}
+                      </th>
+                      <th onClick={(e) => requestSort('vendor_name', e.shiftKey)} style={{ cursor: 'pointer' }}>
+                        Vendor{getSortDirection('vendor_name')}
+                      </th>
+                      <th onClick={(e) => requestSort('component_type', e.shiftKey)} style={{ cursor: 'pointer' }}>
+                        Component Type{getSortDirection('component_type')}
+                      </th>
+                      <th onClick={(e) => requestSort('quantity', e.shiftKey)} style={{ cursor: 'pointer' }}>
+                        Quantity{getSortDirection('quantity')}
+                      </th>
+                      <th onClick={(e) => requestSort('status', e.shiftKey)} style={{ cursor: 'pointer' }}>
+                        Status{getSortDirection('status')}
+                      </th>
                       <th>Actions</th>
                   </tr>
               </thead>
               <tbody>
-                {orders.length > 0 ? orders.map(order => (
+                {sortedOrders.length > 0 ? sortedOrders.map(order => (
                   <tr key={order.order_id}>
                     <td>{order.order_id}</td>
                     <td>{order.vendor_name}</td>

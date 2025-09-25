@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Import the new components
 import DashboardOverview from './DashboardOverview';
@@ -9,6 +10,7 @@ import InstalledItems from './InstalledItems';
 const OfficerDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -35,6 +37,7 @@ const OfficerDashboard = () => {
     <div className="container-fluid mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap">
         <h2 className="mb-2 mb-md-0">Officer Dashboard</h2>
+        <button className="btn btn-secondary" onClick={() => navigate('/')}>Logout</button>
         <div className="fitting-search-section">
           <form onSubmit={handleSearch} className="input-group">
             <input
