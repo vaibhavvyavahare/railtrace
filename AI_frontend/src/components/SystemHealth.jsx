@@ -26,8 +26,8 @@ const SystemHealth = () => {
     setError(null);
 
     try {
-      const response = await healthAPI.getDetailedHealth();
-      setHealth(response.data);
+      const response = await healthAPI.getHealth();
+      setHealth({ status: 'healthy', now: response.data.now, dependencies: { database: 'connected' }, service: 'AI Connector' });
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
@@ -72,17 +72,8 @@ const SystemHealth = () => {
   const getOverallStatus = () => {
     if (!health) return { status: 'Unknown', color: 'gray' };
     
-    const { status, dependencies } = health;
-    
-    if (status === 'healthy' && 
-        dependencies?.database === 'connected' && 
-        dependencies?.sarvam_ai === 'configured') {
-      return { status: 'All Systems Operational', color: 'green' };
-    } else if (status === 'healthy') {
-      return { status: 'Partially Operational', color: 'yellow' };
-    } else {
-      return { status: 'System Issues Detected', color: 'red' };
-    }
+    const { status } = health;
+    return status === 'healthy' ? { status: 'All Systems Operational', color: 'green' } : { status: 'System Issues Detected', color: 'red' };
   };
 
   if (loading && !health) {
@@ -150,10 +141,8 @@ const SystemHealth = () => {
         {health && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {health.version || 'N/A'}
-              </div>
-              <div className="text-sm text-gray-600">Service Version</div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">AI Connector</div>
+              <div className="text-sm text-gray-600">Service Name</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-900 mb-1">
@@ -163,7 +152,7 @@ const SystemHealth = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-900 mb-1">
-                {new Date(health.timestamp).toLocaleTimeString()}
+                {health.now ? new Date(health.now).toLocaleTimeString() : 'N/A'}
               </div>
               <div className="text-sm text-gray-600">Last Checked</div>
             </div>
@@ -193,19 +182,19 @@ const SystemHealth = () => {
               </div>
             </div>
 
-            {/* Sarvam AI Status */}
+            {/* AI Connector simple status */}
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center gap-3">
                 <Activity className="text-purple-500" size={24} />
                 <div>
-                  <div className="font-medium text-gray-900">Sarvam AI Service</div>
-                  <div className="text-sm text-gray-600">AI analysis and predictions</div>
+                  <div className="font-medium text-gray-900">AI Connector</div>
+                  <div className="text-sm text-gray-600">AI summaries and alerts</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {getStatusIcon(health.dependencies?.sarvam_ai)}
-                <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${getStatusColor(health.dependencies?.sarvam_ai)}-100 text-${getStatusColor(health.dependencies?.sarvam_ai)}-800`}>
-                  {health.dependencies?.sarvam_ai || 'unknown'}
+                {getStatusIcon(health.status)}
+                <span className={`px-3 py-1 rounded-full text-sm font-medium bg-${getStatusColor(health.status)}-100 text-${getStatusColor(health.status)}-800`}>
+                  {health.status}
                 </span>
               </div>
             </div>
@@ -223,11 +212,11 @@ const SystemHealth = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Name:</span>
-                  <span className="font-medium">{health.service || 'AI Integration Service'}</span>
+                  <span className="font-medium">{health.service || 'AI Connector'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Version:</span>
-                  <span className="font-medium">{health.version || 'N/A'}</span>
+                  <span className="font-medium">N/A</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
@@ -244,7 +233,7 @@ const SystemHealth = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Last Check:</span>
                   <span className="font-medium">
-                    {new Date(health.timestamp).toLocaleString()}
+                    {health.now ? new Date(health.now).toLocaleString() : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, TrendingUp, Users, Package, AlertTriangle, Activity } from 'lucide-react';
+import { RefreshCw, TrendingUp, Users, AlertTriangle, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { aiAPI, handleAPIError } from '../services/api';
 
 const PerformanceReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [report, setReport] = useState(null);
+  const [summaries, setSummaries] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     loadPerformanceReport();
@@ -17,8 +18,12 @@ const PerformanceReport = () => {
     setError(null);
 
     try {
-      const response = await aiAPI.getPerformanceReport();
-      setReport(response.data);
+      const [sumRes, alertRes] = await Promise.all([
+        aiAPI.listSummaries({ limit: 200 }),
+        aiAPI.listAlerts({ limit: 200 })
+      ]);
+      setSummaries(sumRes.data || []);
+      setAlerts(alertRes.data || []);
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
@@ -38,27 +43,14 @@ const PerformanceReport = () => {
     }));
   };
 
-  const getVendorPerformanceData = () => {
-    if (!report?.data) return [];
-    
-    const { vendors, lots, batches, fittings } = report.data;
-    return vendors.map(vendor => {
-      const vendorLots = lots.filter(lot => lot.vendor_id === vendor.vendor_id);
-      const vendorBatches = batches.filter(batch => 
-        vendorLots.some(lot => lot.lot_id === batch.lot_id)
-      );
-      const vendorFittings = fittings.filter(fitting => 
-        vendorBatches.some(batch => batch.batch_id === fitting.batch_id)
-      );
-
-      return {
-        name: vendor.vendor_name,
-        lots: vendorLots.length,
-        batches: vendorBatches.length,
-        fittings: vendorFittings.length
-      };
-    });
-  };
+  const vendorIds = Array.from(new Set(summaries.map(s => s.vendor_id).filter(Boolean)));
+  const vendorSummaryCounts = vendorIds.map(vId => ({
+    name: vId,
+    vendor: vId,
+    vendorSummaries: summaries.filter(s => s.vendor_id === vId && s.scope === 'vendor').length,
+    lotSummaries: summaries.filter(s => s.vendor_id === vId && s.scope === 'lot').length,
+    batchSummaries: summaries.filter(s => s.vendor_id === vId && s.scope === 'batch').length,
+  }));
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -84,7 +76,7 @@ const PerformanceReport = () => {
     );
   }
 
-  if (!report) {
+  if (!summaries && !alerts) {
     return (
       <div className="alert alert-warning">
         <h3>No Data Available</h3>
@@ -93,13 +85,10 @@ const PerformanceReport = () => {
     );
   }
 
-  const { data, aiAnalysis } = report;
-  const { vendors, orders, lots, batches, fittings, installations, maintenances } = data;
-
-  const orderStatusData = getStatusData(orders, 'status');
-  const installationStatusData = getStatusData(installations, 'status');
-  const maintenanceStatusData = getStatusData(maintenances, 'status');
-  const vendorPerformanceData = getVendorPerformanceData();
+  const severityData = getStatusData(alerts, 'severity');
+  const scopeData = getStatusData(summaries, 'scope');
+  const vendorScopeSummaries = summaries.filter(s => (s.scope || '').toLowerCase() === 'vendor');
+  const batchScopeSummaries = summaries.filter(s => (s.scope || '').toLowerCase() === 'batch');
 
   return (
     <div className="space-y-6">
@@ -119,13 +108,14 @@ const PerformanceReport = () => {
         </button>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics */
+      }
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="metric-card border-blue-200">
           <div className="flex items-center justify-between">
             <div>
-              <div className="metric-value text-blue-600">{vendors.length}</div>
-              <div className="metric-label">Total Vendors</div>
+              <div className="metric-value text-blue-600">{vendorIds.length}</div>
+              <div className="metric-label">Vendors Covered</div>
             </div>
             <Users className="text-blue-600" size={24} />
           </div>
@@ -134,18 +124,18 @@ const PerformanceReport = () => {
         <div className="metric-card border-green-200">
           <div className="flex items-center justify-between">
             <div>
-              <div className="metric-value text-green-600">{orders.length}</div>
-              <div className="metric-label">Total Orders</div>
+              <div className="metric-value text-green-600">{summaries.length}</div>
+              <div className="metric-label">Total Summaries</div>
             </div>
-            <Package className="text-green-600" size={24} />
+            <Activity className="text-green-600" size={24} />
           </div>
         </div>
 
         <div className="metric-card border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <div className="metric-value text-purple-600">{fittings.length}</div>
-              <div className="metric-label">Total Fittings</div>
+              <div className="metric-value text-purple-600">{alerts.length}</div>
+              <div className="metric-label">Total Alerts</div>
             </div>
             <Activity className="text-purple-600" size={24} />
           </div>
@@ -154,77 +144,23 @@ const PerformanceReport = () => {
         <div className="metric-card border-orange-200">
           <div className="flex items-center justify-between">
             <div>
-              <div className="metric-value text-orange-600">{installations.length}</div>
-              <div className="metric-label">Installations</div>
+              <div className="metric-value text-orange-600">{alerts.filter(a => (a.status || '').toLowerCase() !== 'resolved').length}</div>
+              <div className="metric-label">Open Alerts</div>
             </div>
             <TrendingUp className="text-orange-600" size={24} />
           </div>
         </div>
       </div>
 
-      {/* AI Analysis */}
-      {aiAnalysis && (
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold mb-4">AI Executive Summary</h3>
-          
-          {aiAnalysis.executive_summary && (
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-              <p className="text-gray-700">{aiAnalysis.executive_summary}</p>
-            </div>
-          )}
-
-          {aiAnalysis.system_health && (
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">System Health</h4>
-              <p className="text-gray-700">{aiAnalysis.system_health}</p>
-            </div>
-          )}
-
-          {aiAnalysis.critical_issues && aiAnalysis.critical_issues.length > 0 && (
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">Critical Issues</h4>
-              <ul className="list-disc list-inside space-y-1 text-gray-700">
-                {aiAnalysis.critical_issues.map((issue, index) => (
-                  <li key={index}>{issue}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
-              <ul className="list-disc list-inside space-y-1 text-gray-700">
-                {aiAnalysis.recommendations.map((rec, index) => (
-                  <li key={index}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {aiAnalysis.action_items && aiAnalysis.action_items.length > 0 && (
-            <div>
-              <h4 className="font-medium text-gray-900 mb-2">Action Items</h4>
-              <ul className="list-disc list-inside space-y-1 text-gray-700">
-                {aiAnalysis.action_items.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Order Status Distribution */}
+        {/* Alerts Severity Distribution */}
         <div className="chart-container">
-          <h3 className="text-lg font-semibold mb-4">Order Status Distribution</h3>
+          <h3 className="text-lg font-semibold mb-4">Alerts Severity Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={orderStatusData}
+                data={severityData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -233,7 +169,7 @@ const PerformanceReport = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {orderStatusData.map((entry, index) => (
+                {severityData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -242,13 +178,13 @@ const PerformanceReport = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Installation Status Distribution */}
+        {/* Summary Scope Distribution */}
         <div className="chart-container">
-          <h3 className="text-lg font-semibold mb-4">Installation Status Distribution</h3>
+          <h3 className="text-lg font-semibold mb-4">Summary Scope Distribution</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={installationStatusData}
+                data={scopeData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -257,7 +193,7 @@ const PerformanceReport = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {installationStatusData.map((entry, index) => (
+                {scopeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -267,89 +203,104 @@ const PerformanceReport = () => {
         </div>
       </div>
 
-      {/* Vendor Performance */}
+      {/* Vendor Summary Coverage */}
       <div className="chart-container">
-        <h3 className="text-lg font-semibold mb-4">Vendor Performance Comparison</h3>
+        <h3 className="text-lg font-semibold mb-4">Vendor Summary Coverage</h3>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={vendorPerformanceData}>
+          <BarChart data={vendorSummaryCounts}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="lots" fill="#3b82f6" name="Lots" />
-            <Bar dataKey="batches" fill="#10b981" name="Batches" />
-            <Bar dataKey="fittings" fill="#f59e0b" name="Fittings" />
+            <Bar dataKey="vendorSummaries" fill="#3b82f6" name="Vendor" />
+            <Bar dataKey="lotSummaries" fill="#10b981" name="Lot" />
+            <Bar dataKey="batchSummaries" fill="#f59e0b" name="Batch" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Maintenance Status */}
-      {maintenanceStatusData.length > 0 && (
-        <div className="chart-container">
-          <h3 className="text-lg font-semibold mb-4">Maintenance Status Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={maintenanceStatusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {maintenanceStatusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Vendor Performance Table */}
+      {/* Latest Summaries */}
       <div className="card p-6">
-        <h3 className="text-lg font-semibold mb-4">Vendor Performance Details</h3>
+        <h3 className="text-lg font-semibold mb-4">Latest Summaries</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2">Vendor</th>
-                <th className="text-left py-2">Lots</th>
-                <th className="text-left py-2">Batches</th>
-                <th className="text-left py-2">Fittings</th>
-                <th className="text-left py-2">Email</th>
-                <th className="text-left py-2">Phone</th>
+                <th className="text-left py-2">Scope</th>
+                <th className="text-left py-2">Lot</th>
+                <th className="text-left py-2">Batch</th>
+                <th className="text-left py-2">Created</th>
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor, index) => {
-                const vendorLots = lots.filter(lot => lot.vendor_id === vendor.vendor_id);
-                const vendorBatches = batches.filter(batch => 
-                  vendorLots.some(lot => lot.lot_id === batch.lot_id)
-                );
-                const vendorFittings = fittings.filter(fitting => 
-                  vendorBatches.some(batch => batch.batch_id === fitting.batch_id)
-                );
+              {summaries.slice(0, 10).map((s, index) => (
+                <tr key={index} className="border-b">
+                  <td className="py-2">
+                    <div>
+                      <div className="font-medium">{s.vendor_id}</div>
+                    </div>
+                  </td>
+                  <td className="py-2">{s.scope}</td>
+                  <td className="py-2">{s.lot_id || '—'}</td>
+                  <td className="py-2">{s.batch_id || '—'}</td>
+                  <td className="py-2">{s.created_at ? new Date(s.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                return (
-                  <tr key={index} className="border-b">
-                    <td className="py-2">
-                      <div>
-                        <div className="font-medium">{vendor.vendor_name}</div>
-                        <div className="text-xs text-gray-500">{vendor.vendor_id}</div>
-                      </div>
-                    </td>
-                    <td className="py-2">{vendorLots.length}</td>
-                    <td className="py-2">{vendorBatches.length}</td>
-                    <td className="py-2">{vendorFittings.length}</td>
-                    <td className="py-2">{vendor.email || 'N/A'}</td>
-                    <td className="py-2">{vendor.phone || 'N/A'}</td>
-                  </tr>
-                );
-              })}
+      {/* All Vendors Reports */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold mb-4">All Vendors Reports</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Vendor</th>
+                <th className="text-left py-2">Summary Preview</th>
+                <th className="text-left py-2">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vendorScopeSummaries.map((s, index) => (
+                <tr key={index} className="border-b">
+                  <td className="py-2">{s.vendor_id}</td>
+                  <td className="py-2 max-w-xl truncate" title={s.summary_text}>{s.summary_text}</td>
+                  <td className="py-2">{s.created_at ? new Date(s.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Batch-wise Fitting Reports & Summaries */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold mb-4">Batch-wise Fitting Reports & Summaries</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Vendor</th>
+                <th className="text-left py-2">Lot</th>
+                <th className="text-left py-2">Batch</th>
+                <th className="text-left py-2">Summary Preview</th>
+                <th className="text-left py-2">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchScopeSummaries.map((s, index) => (
+                <tr key={index} className="border-b">
+                  <td className="py-2">{s.vendor_id}</td>
+                  <td className="py-2">{s.lot_id || '—'}</td>
+                  <td className="py-2">{s.batch_id || '—'}</td>
+                  <td className="py-2 max-w-xl truncate" title={s.summary_text}>{s.summary_text}</td>
+                  <td className="py-2">{s.created_at ? new Date(s.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -359,7 +310,7 @@ const PerformanceReport = () => {
       <div className="card p-6">
         <h3 className="text-lg font-semibold mb-4">Raw Report Data</h3>
         <div className="json-viewer">
-          {JSON.stringify(report, null, 2)}
+          {JSON.stringify({ summaries, alerts }, null, 2)}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
   BarChart3, 
@@ -62,24 +62,6 @@ const Navigation = () => {
 
 // Header Component
 const Header = () => {
-  const [healthStatus, setHealthStatus] = useState({ status: 'checking' });
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const response = await healthAPI.getHealth();
-        setHealthStatus(response.data);
-      } catch (error) {
-        console.warn('Health check failed:', error.message);
-        setHealthStatus({ status: 'unhealthy' });
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <header className="header">
       <div className="container">
@@ -90,26 +72,6 @@ const Header = () => {
             <p className="text-lg opacity-90">
               Intelligent insights for railway component tracking and maintenance
             </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div 
-                className={`w-3 h-3 rounded-full ${
-                  healthStatus?.status === 'healthy' 
-                    ? 'bg-green-400' 
-                    : healthStatus?.status === 'checking'
-                    ? 'bg-yellow-400'
-                    : 'bg-red-400'
-                }`}
-              />
-              <span className="text-sm">
-                {healthStatus?.status === 'healthy' 
-                  ? 'Service Online' 
-                  : healthStatus?.status === 'checking'
-                  ? 'Checking...'
-                  : 'Service Offline'}
-              </span>
-            </div>
           </div>
         </div>
       </div>

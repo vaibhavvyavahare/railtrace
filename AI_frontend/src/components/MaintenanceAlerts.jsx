@@ -5,7 +5,7 @@ import { aiAPI, handleAPIError } from '../services/api';
 const MaintenanceAlerts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [alerts, setAlerts] = useState(null);
+  const [alerts, setAlerts] = useState([]);
 
   useEffect(() => {
     loadMaintenanceAlerts();
@@ -16,8 +16,8 @@ const MaintenanceAlerts = () => {
     setError(null);
 
     try {
-      const response = await aiAPI.getMaintenanceAlerts();
-      setAlerts(response.data);
+      const { data } = await aiAPI.listAlerts({ limit: 100 });
+      setAlerts(data || []);
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
@@ -88,7 +88,10 @@ const MaintenanceAlerts = () => {
     );
   }
 
-  const { critical_alerts = [], predictive_alerts = [], vendor_issues = [], recommendations = [] } = alerts;
+  const critical_alerts = alerts.filter(a => (a.severity || '').toLowerCase() === 'high');
+  const predictive_alerts = alerts.filter(a => (a.severity || '').toLowerCase() === 'medium');
+  const vendor_issues = alerts.filter(a => (a.severity || '').toLowerCase() === 'low');
+  const recommendations = [];
 
   return (
     <div className="space-y-6">

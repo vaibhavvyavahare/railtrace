@@ -6,7 +6,8 @@ import {
   Package, 
   Activity,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Database
 } from 'lucide-react';
 import { aiAPI, healthAPI, handleAPIError } from '../services/api';
 import ServiceUnavailable from './ServiceUnavailable';
@@ -27,28 +28,20 @@ const Dashboard = () => {
     setError(null);
     
     try {
-      const [healthRes, performanceRes, alertsRes] = await Promise.allSettled([
-        healthAPI.getDetailedHealth(),
-        aiAPI.getPerformanceReport(),
-        aiAPI.getMaintenanceAlerts()
+      const [healthRes, alertsRes] = await Promise.allSettled([
+        healthAPI.getHealth(),
+        aiAPI.listAlerts({ limit: 20 })
       ]);
 
       if (healthRes.status === 'fulfilled') {
-        setSystemHealth(healthRes.value.data);
+        setSystemHealth({ status: 'healthy', now: healthRes.value.data.now, dependencies: { database: 'connected' } });
       } else {
         console.warn('Health check failed:', healthRes.reason);
-        setSystemHealth({ status: 'unhealthy', dependencies: { database: 'unknown', sarvam_ai: 'unknown' } });
-      }
-
-      if (performanceRes.status === 'fulfilled') {
-        setPerformanceData(performanceRes.value.data);
-      } else {
-        console.warn('Performance report failed:', performanceRes.reason);
-        setPerformanceData({ vendors: [], orders: [], lots: [], batches: [], fittings: [], installations: [], maintenances: [] });
+        setSystemHealth({ status: 'unhealthy', dependencies: { database: 'unknown' } });
       }
 
       if (alertsRes.status === 'fulfilled') {
-        setAlerts(alertsRes.value.data.alerts || []);
+        setAlerts(alertsRes.value.data || []);
       } else {
         console.warn('Alerts failed:', alertsRes.reason);
         setAlerts([]);
@@ -64,12 +57,7 @@ const Dashboard = () => {
 
   const getHealthStatus = () => {
     if (!systemHealth) return { status: 'unknown', color: 'gray' };
-    
-    if (systemHealth.status === 'healthy') {
-      return { status: 'Healthy', color: 'green' };
-    } else {
-      return { status: 'Issues Detected', color: 'red' };
-    }
+    return systemHealth.status === 'healthy' ? { status: 'Healthy', color: 'green' } : { status: 'Issues Detected', color: 'red' };
   };
 
   const getCriticalAlerts = () => {
@@ -145,9 +133,9 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="metric-value text-green-600">
-                {systemHealth?.dependencies?.sarvam_ai === 'configured' ? '✓' : '✗'}
+                {systemHealth?.status === 'healthy' ? '✓' : '✗'}
               </div>
-              <div className="metric-label">AI Service</div>
+              <div className="metric-label">AI Connector</div>
             </div>
             <Activity className="text-green-600" size={24} />
           </div>
@@ -169,7 +157,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="metric-value text-purple-600">
-                {performanceData?.data?.vendors?.length || 0}
+                {0}
               </div>
               <div className="metric-label">Active Vendors</div>
             </div>
@@ -202,24 +190,14 @@ const Dashboard = () => {
                     {systemHealth.dependencies?.database || 'unknown'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>AI Service</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    systemHealth.dependencies?.sarvam_ai === 'configured' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {systemHealth.dependencies?.sarvam_ai || 'unknown'}
-                  </span>
-                </div>
               </div>
             </div>
             
             <div>
               <h4 className="font-medium text-gray-700 mb-2">Service Info</h4>
               <div className="space-y-2 text-sm text-gray-600">
-                <div>Version: {systemHealth.version}</div>
-                <div>Last Updated: {new Date(systemHealth.timestamp).toLocaleString()}</div>
+                <div>Service: AI Connector</div>
+                <div>Last Updated: {systemHealth.now ? new Date(systemHealth.now).toLocaleString() : 'N/A'}</div>
               </div>
             </div>
           </div>
@@ -245,9 +223,7 @@ const Dashboard = () => {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-medium text-gray-900">
-                      {alert.message || 'Alert'}
-                    </div>
+                    <div className="font-medium text-gray-900">{alert.alert_type || 'Alert'}</div>
                     {alert.action && (
                       <div className="text-sm text-gray-600 mt-1">
                         Action: {alert.action}

@@ -1,44 +1,37 @@
 import axios from 'axios';
 
-const AI_API_BASE_URL = 'http://localhost:3100/api/ai';
-const HEALTH_API_BASE_URL = 'http://localhost:3100/health';
+const AI_CONNECTOR_BASE_URL = 'http://localhost:5055';
+const REPORTS_API_BASE_URL = `${AI_CONNECTOR_BASE_URL}/api/reports`;
+const ALERTS_API_BASE_URL = `${AI_CONNECTOR_BASE_URL}/api/alerts`;
+const HEALTH_API_BASE_URL = `${AI_CONNECTOR_BASE_URL}/health`;
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: AI_API_BASE_URL,
+// Create axios instances
+const reportsClient = axios.create({
+  baseURL: REPORTS_API_BASE_URL,
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
+});
+
+const alertsClient = axios.create({
+  baseURL: ALERTS_API_BASE_URL,
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Health check API
 export const healthAPI = {
   getHealth: () => axios.get(`${HEALTH_API_BASE_URL}`),
-  getDetailedHealth: () => axios.get(`${HEALTH_API_BASE_URL}/detailed`),
 };
 
-// AI Analysis APIs
+// AI Connector APIs
 export const aiAPI = {
-  // Vendor Analysis
-  getVendorSummary: (vendorId) => 
-    apiClient.get(`/vendor/${vendorId}/summary`),
-  
-  // Batch Analysis
-  getBatchSummary: (batchId) => 
-    apiClient.get(`/batch/${batchId}/summary`),
-  
-  // Lot Analysis
-  getLotSummary: (lotId) => 
-    apiClient.get(`/lot/${lotId}/summary`),
-  
-  // Performance Reports
-  getPerformanceReport: () => 
-    apiClient.get('/performance/report'),
-  
-  // Maintenance Alerts
-  getMaintenanceAlerts: () => 
-    apiClient.get('/alerts/maintenance'),
+  // Summaries
+  listSummaries: (params = {}) => reportsClient.get('/', { params }),
+  generateVendorSummary: (vendor_id) => reportsClient.post('/generate', { vendor_id }),
+
+  // Alerts
+  listAlerts: (params = {}) => alertsClient.get('/', { params }),
+  evaluateVendorAlerts: (vendor_id) => alertsClient.post('/evaluate', { vendor_id }),
 };
 
 // Utility functions
@@ -117,4 +110,4 @@ export const handleAPIError = (error) => {
   }
 };
 
-export default apiClient;
+export default aiAPI;

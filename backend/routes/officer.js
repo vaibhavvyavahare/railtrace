@@ -8,7 +8,7 @@ const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
   database: 'railtrace_db',
-  password: 'peteraapte', // IMPORTANT: Replace with your actual password
+  password: 'vaibhav', // IMPORTANT: Replace with your actual password
   port: 5432,
 });
 

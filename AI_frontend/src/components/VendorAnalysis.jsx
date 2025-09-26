@@ -19,8 +19,9 @@ const VendorAnalysis = () => {
     setAnalysis(null);
 
     try {
-      const response = await aiAPI.getVendorSummary(vendorId.trim());
-      setAnalysis(response.data);
+      await aiAPI.generateVendorSummary(vendorId.trim());
+      const { data } = await aiAPI.listSummaries({ vendor_id: vendorId.trim(), limit: 1 });
+      setAnalysis(data && data[0] ? data[0] : null);
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
@@ -31,8 +32,12 @@ const VendorAnalysis = () => {
   const renderAnalysis = () => {
     if (!analysis) return null;
 
-    const { data, aiAnalysis } = analysis;
-    const { vendor, lots, batches, fittings, installations, maintenances } = data;
+    const vendor = { vendor_id: analysis.vendor_id };
+    const lots = analysis.lot_id ? [analysis.lot_id] : [];
+    const batches = analysis.batch_id ? [analysis.batch_id] : [];
+    const installations = [];
+    const maintenances = [];
+    const aiAnalysis = { summary: analysis.summary_text };
 
     return (
       <div className="space-y-6">

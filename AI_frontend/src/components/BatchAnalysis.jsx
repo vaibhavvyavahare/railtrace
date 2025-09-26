@@ -7,6 +7,8 @@ const BatchAnalysis = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysis, setAnalysis] = useState(null);
+  const [summaries, setSummaries] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
   const handleAnalyze = async () => {
     if (!batchId.trim()) {
@@ -19,8 +21,13 @@ const BatchAnalysis = () => {
     setAnalysis(null);
 
     try {
-      const response = await aiAPI.getBatchSummary(batchId.trim());
-      setAnalysis(response.data);
+      const [sumRes, alertRes] = await Promise.all([
+        aiAPI.listSummaries({ batch_id: batchId.trim(), limit: 10 }),
+        aiAPI.listAlerts({ batch_id: batchId.trim(), limit: 50 })
+      ]);
+      setSummaries(sumRes.data || []);
+      setAlerts(alertRes.data || []);
+      setAnalysis({ batch_id: batchId.trim() });
     } catch (err) {
       setError(handleAPIError(err));
     } finally {
@@ -30,276 +37,76 @@ const BatchAnalysis = () => {
 
   const renderAnalysis = () => {
     if (!analysis) return null;
-
-    const { data, aiAnalysis } = analysis;
-    const { batch, lot, vendor, order, fittings, installations, maintenances } = data;
-
+    const batchSummaries = summaries;
+    const batchAlerts = alerts;
     return (
       <div className="space-y-6">
-        {/* Batch Overview */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold mb-4">Batch Overview</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="metric-card">
-              <div className="metric-value text-blue-600">{fittings.length}</div>
-              <div className="metric-label">Total Items</div>
+              <div className="metric-value text-blue-600">{batchAlerts.length}</div>
+              <div className="metric-label">Alerts</div>
             </div>
             <div className="metric-card">
-              <div className="metric-value text-green-600">{installations.length}</div>
-              <div className="metric-label">Installations</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-value text-orange-600">{maintenances.length}</div>
-              <div className="metric-label">Maintenance Records</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-value text-purple-600">
-                {batch.is_qr_printed ? '✓' : '✗'}
-              </div>
-              <div className="metric-label">QR Printed</div>
+              <div className="metric-value text-green-600">{batchSummaries.length}</div>
+              <div className="metric-label">Summaries</div>
             </div>
           </div>
-          
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium text-gray-900 mb-2">Batch Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">Batch ID:</span> {batch.batch_id}
-              </div>
-              <div>
-                <span className="font-medium">Lot ID:</span> {batch.lot_id}
-              </div>
-              <div>
-                <span className="font-medium">Vendor:</span> {vendor?.vendor_name || 'Unknown'}
-              </div>
-              <div>
-                <span className="font-medium">Component:</span> {order?.component_type || 'Unknown'}
-              </div>
-              <div>
-                <span className="font-medium">Order Type:</span> {order?.order_type || 'Unknown'}
-              </div>
-              <div>
-                <span className="font-medium">Printed At:</span> {
-                  batch.printed_at 
-                    ? new Date(batch.printed_at).toLocaleString()
-                    : 'Not printed'
-                }
+                <span className="font-medium">Batch ID:</span> {analysis.batch_id}
               </div>
             </div>
           </div>
         </div>
 
-        {/* AI Analysis */}
-        {aiAnalysis && (
+        {batchSummaries.length > 0 && (
           <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-4">AI Analysis</h3>
-            
-            {aiAnalysis.summary && (
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 mb-2">Summary</h4>
-                <p className="text-gray-700">{aiAnalysis.summary}</p>
-              </div>
-            )}
-
-            {aiAnalysis.quality_score && (
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 mb-2">Quality Score</h4>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        aiAnalysis.quality_score >= 8 ? 'bg-green-500' :
-                        aiAnalysis.quality_score >= 6 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${(aiAnalysis.quality_score / 10) * 100}%` }}
-                    />
-                  </div>
-                  <span className="font-medium">{aiAnalysis.quality_score}/10</span>
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis.issues && aiAnalysis.issues.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 mb-2">Identified Issues</h4>
-                <ul className="list-disc list-inside space-y-1 text-gray-700">
-                  {aiAnalysis.issues.map((issue, index) => (
-                    <li key={index}>{issue}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
-                <ul className="list-disc list-inside space-y-1 text-gray-700">
-                  {aiAnalysis.recommendations.map((rec, index) => (
-                    <li key={index}>{rec}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {aiAnalysis.alerts && aiAnalysis.alerts.length > 0 && (
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Alerts</h4>
-                <div className="space-y-2">
-                  {aiAnalysis.alerts.map((alert, index) => (
-                    <div 
-                      key={index}
-                      className={`alert-item ${alert.severity?.toLowerCase() || 'low'}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="font-medium">{alert.message}</div>
-                          {alert.action && (
-                            <div className="text-sm text-gray-600 mt-1">
-                              Action: {alert.action}
-                            </div>
-                          )}
-                        </div>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          alert.severity?.toLowerCase() === 'high' 
-                            ? 'bg-red-100 text-red-800'
-                            : alert.severity?.toLowerCase() === 'medium'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {alert.severity || 'Low'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Fittings List */}
-        {fittings.length > 0 && (
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-4">Fittings in Batch</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2">Fitting ID</th>
-                    <th className="text-left py-2">Item Number</th>
-                    <th className="text-left py-2">Status</th>
-                    <th className="text-left py-2">Last Inspection</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fittings.map((fitting, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="py-2 font-mono text-xs">{fitting.fitting_id}</td>
-                      <td className="py-2">{fitting.item_number}</td>
-                      <td className="py-2">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          fitting.status === 'new' 
-                            ? 'bg-blue-100 text-blue-800'
-                            : fitting.status === 'printed'
-                            ? 'bg-green-100 text-green-800'
-                            : fitting.status === 'inspected'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {fitting.status}
-                        </span>
-                      </td>
-                      <td className="py-2">
-                        {fitting.last_inspection 
-                          ? new Date(fitting.last_inspection).toLocaleDateString()
-                          : 'Never'
-                        }
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Installation Records */}
-        {installations.length > 0 && (
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-4">Installation Records</h3>
-            <div className="space-y-3">
-              {installations.map((installation, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <div className="font-medium">{installation.fitting_id}</div>
-                      <div className="text-sm text-gray-600">
-                        Status: {installation.status}
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(installation.installed_at).toLocaleString()}
-                    </span>
-                  </div>
-                  {installation.location_lat && installation.location_long && (
-                    <div className="text-xs text-gray-500">
-                      Location: {installation.location_lat.toFixed(4)}, {installation.location_long.toFixed(4)}
-                    </div>
-                  )}
-                  {installation.notes && (
-                    <div className="text-sm text-gray-600 mt-2">
-                      Notes: {installation.notes}
-                    </div>
-                  )}
+            <h3 className="text-lg font-semibold mb-4">Batch Summaries</h3>
+            <div className="space-y-4">
+              {batchSummaries.map((s, idx) => (
+                <div key={idx} className="p-4 border rounded-lg">
+                  <div className="text-xs text-gray-500 mb-2">{s.created_at ? new Date(s.created_at).toLocaleString() : ''}</div>
+                  <div className="text-gray-800 whitespace-pre-wrap">{s.summary_text}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Maintenance Records */}
-        {maintenances.length > 0 && (
+        {batchAlerts.length > 0 && (
           <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-4">Maintenance Records</h3>
+            <h3 className="text-lg font-semibold mb-4">Batch Alerts</h3>
             <div className="space-y-3">
-              {maintenances.map((maintenance, index) => (
+              {batchAlerts.map((alert, index) => (
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <div className="font-medium">{maintenance.fitting_id}</div>
-                      <div className="text-sm text-gray-600">
-                        {maintenance.issue_description}
-                      </div>
+                      <div className="font-medium">{alert.alert_type}</div>
+                      <div className="text-sm text-gray-600">{alert.description}</div>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs ${
-                      maintenance.status === 'resolved' 
-                        ? 'bg-green-100 text-green-800'
-                        : maintenance.status === 'in_progress'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
+                      (alert.severity || '').toLowerCase() === 'high' ? 'bg-red-100 text-red-800' :
+                      (alert.severity || '').toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
                     }`}>
-                      {maintenance.status}
+                      {alert.severity || 'low'}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Reported: {new Date(maintenance.reported_at).toLocaleString()}
-                  </div>
-                  {maintenance.resolution_notes && (
-                    <div className="text-sm text-gray-600 mt-2">
-                      Resolution: {maintenance.resolution_notes}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500">Fitting: {alert.fitting_id}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Raw Data */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold mb-4">Raw Analysis Data</h3>
           <div className="json-viewer">
-            {JSON.stringify(analysis, null, 2)}
+            {JSON.stringify({ summaries, alerts }, null, 2)}
           </div>
         </div>
       </div>
