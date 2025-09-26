@@ -21,6 +21,8 @@ CREATE TABLE vendors (
     address TEXT
 );
 
+
+
 -- Create the orders table with an order_type field
 CREATE TABLE orders (
     order_id VARCHAR(50) PRIMARY KEY,
